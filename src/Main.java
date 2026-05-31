@@ -13,7 +13,7 @@ public class Main {
         System.out.println("Ingestion Phase: " + (ingestionTime - startTime) + " ms");
 
         // 3. COMPUTE (Passing the 'cores' variable we just created above)
-        Filter.applyGrayscale(myImage, cores);
+        Filter.applyBlur(myImage, cores);
         long computeTime = System.currentTimeMillis();
         System.out.println("Compute Phase: " + (computeTime - ingestionTime) + " ms");
 
