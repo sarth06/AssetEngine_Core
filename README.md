@@ -24,7 +24,7 @@ By replacing the standard JVM with an OS-specific standalone executable, AeroCan
 ### 2. High-Performance Web UI Interactive Canvas
 *The UI layer executing lightning-fast asynchronous requests to the local gateway cluster, leveraging cache-busting timestamping to defeat aggressive browser storage behaviors.*
 
-![Web UI Execution Demo](frontend/assets/canvas_demo.gif)
+![Web UI Execution Demo](frontend/assests/canvas_demo.gif)
 
 ---
 
