@@ -53,3 +53,17 @@ bin/
 /dist/
 /nbdist/
 /.nb-gradle/
+# Build Artifacts
+*.exe
+*.class
+
+# Environment Variables (Keep this secret!)
+.env
+
+# Workspace Runtime Data
+workspace_data/*.ppm
+!workspace_data/.gitkeep
+
+# Python Caches
+__pycache__/
+*.pyc

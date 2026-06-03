@@ -1,130 +1,84 @@
 import os
 import sys
-import json
-import requests
+import subprocess
 from google import genai
 from google.genai import types
 
-# 1. SMART API KEY RETRIEVAL LAYER
+# ---------------------------------------------------------
+# 1. SMART API KEY RETRIEVAL
+# ---------------------------------------------------------
 API_KEY = os.environ.get("GEMINI_API_KEY")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Fallback: If the Windows environment variable isn't found, look for a local .env file
-if not API_KEY and os.path.exists(".env"):
-    with open(".env", "r") as env_file:
+if not API_KEY and os.path.exists(os.path.join(BASE_DIR, ".env")):
+    with open(os.path.join(BASE_DIR, ".env"), "r") as env_file:
         for line in env_file:
             if line.strip().startswith("GEMINI_API_KEY="):
-                # Split at the '=' symbol and extract the key cleanly
                 API_KEY = line.split("=", 1)[1].strip()
                 break
 
 if not API_KEY:
     print("[CRITICAL ERROR] GEMINI_API_KEY could not be found.")
-    print("Please ensure your key is added to the '.env' file in this directory.")
     sys.exit(1)
 
-# Initialize the modern client
 try:
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
     print(f"[CRITICAL] Failed to initialize Gemini Client: {e}")
     sys.exit(1)
 
-# 2. DEFINE THE NATIVE COMPUTE TOOL
-def trigger_native_engine(file_path: str, mode: str) -> str:
+# ---------------------------------------------------------
+# 2. NATIVE TOOL DEFINITION (With Strict LLM Guardrails)
+# ---------------------------------------------------------
+def apply_image_filter(image_filename: str, filter_mode: str) -> str:
     """
-    Processes a local .ppm image file using the high-performance native AOT C++ engine.
+    Passes an image to the native AeroCanvas engine to apply a mathematical filter.
 
     Args:
-        file_path: The local path to the input .ppm file (e.g., 'assets/true_binary.ppm').
-        mode: The mathematical filter matrix to apply. Must be exactly one of these:
-              'blur'        -> 3x3 Box Blur matrix transformation
-              'invert'      -> Absolute color inversion (Negative)
-              'grayscale'   -> Black and white luminosity conversion
-              'sharpen'     -> High-pass image sharpening kernel
-              'edge'        -> High-contrast edge detection line art kernel
-    Returns:
-        A JSON formatted string detailing the success asset path or error trace.
+        image_filename: The name of the file (e.g., 'true_binary.ppm').
+        filter_mode: MUST be one of these exact strings: 'invert', 'blur', 'edge', 'sharpen', 'grayscale'.
     """
-    print(f"\n[AGENT TOOL INTERACTION] Gemini initiated 'trigger_native_engine'")
-    print(f" -> Target Asset: {file_path}")
-    print(f" -> Chosen Mode:  {mode.upper()}")
 
-    if not os.path.exists(file_path):
-        return json.dumps({"error": f"Local image source file not found at {file_path}"})
+    # FIX 1: Sanitize the filename to strip out any folder paths the LLM tries to guess
+    clean_filename = os.path.basename(image_filename)
 
-    url = "http://127.0.0.1:8000/process-image/"
+    print(f"\n[SYSTEM] Triggering Native Engine -> File: {clean_filename} | Mode: {filter_mode}")
+
+    workspace_dir = os.path.join(BASE_DIR, "workspace_data")
+    engine_path = os.path.join(BASE_DIR, "AeroCanvas.exe")
+
+    input_path = os.path.join(workspace_dir, clean_filename)
+    output_path = os.path.join(workspace_dir, "high_res_output.ppm")
+
+    if not os.path.exists(input_path):
+        return f"Error: The file '{clean_filename}' does not exist in the workspace directory."
+
     try:
-        print("[AGENT NETWORK] Streaming payload chunks to local FastAPI gateway...")
-        with open(file_path, "rb") as image_file:
-            files = {"file": (os.path.basename(file_path), image_file, "application/octet-stream")}
-            data = {"mode": mode}
-            response = requests.post(url, files=files, data=data)
-
-        if response.status_code == 200:
-            print("[AGENT NETWORK] Handshake success. 200 OK returned.")
-            return json.dumps(response.json())
-        else:
-            return json.dumps({"error": f"HTTP {response.status_code}", "details": response.text})
-    except requests.exceptions.RequestException as e:
-        return json.dumps({"error": "Gateway connection refused. Is your Uvicorn server online?", "details": str(e)})
-
-
-# 3. AGENT ORCHESTRATION LAYER
-SYSTEM_INSTRUCTION = """
-You are the master agentic supervisor for AeroCanvas, an ultra-low-latency native image core.
-Your purpose is to interpret natural language requests from the human operator, determine the correct mathematical computation matrix, and execute the 'trigger_native_engine' tool.
-
-Map user intents to these modes exactly:
-- Blurry / Smooth / Softened -> 'blur'
-- Negative / Inverted / Flipped colors -> 'invert'
-- Black and White / Gray / Monochrome -> 'grayscale'
-- Crisp / Sharp / Detailed -> 'sharpen'
-- Sketch / Outline / Line Art / Edges -> 'edge'
-
-Once the tool finishes running, report back to the user with a concise technical summary and the output asset link.
-"""
-
-def boot_agent():
-    print("\n==================================================")
-    print("      AeroCanvas Agentic Interface v2.0           ")
-    print("==================================================")
-    print("Engine: google-genai SDK (Live Function Calling)")
-    print("Ready for processing intents. Type 'exit' to quit.\n")
-
-    # Set up the execution configuration including our tool array
-    config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_INSTRUCTION,
-        tools=[trigger_native_engine],
-        temperature=0.2 # Lower temperature forces deterministic tool routing
-    )
-
-    # Begin automated chat session using the current recommended model tier
-    try:
-        chat = client.chats.create(model="gemini-2.5-flash", config=config)
+        subprocess.run([engine_path, input_path, output_path, filter_mode], check=True)
+        return f"Success! The engine applied '{filter_mode}' and saved the result to high_res_output.ppm"
     except Exception as e:
-        # Fallback to 1.5 if your workspace constraints prefer it
-        try:
-            chat = client.chats.create(model="gemini-1.5-flash", config=config)
-        except Exception as inner_e:
-            print(f"[ERROR] Could not build chat session: {inner_e}")
-            sys.exit(1)
+        return f"Engine Failure: {e}"
 
-    while True:
-        try:
-            user_prompt = input("You: ")
-            if user_prompt.lower() in ['exit', 'quit']:
-                print("Disconnecting agent core...")
-                break
+# ---------------------------------------------------------
+# 3. AGENT CHAT LOOP
+# ---------------------------------------------------------
+print("========================================")
+print(" AeroCanvas AI Orchestrator Online")
+print("========================================")
 
-            if not user_prompt.strip():
-                continue
+chat = client.chats.create(
+    model="gemini-2.5-flash",
+    config=types.GenerateContentConfig(
+        tools=[apply_image_filter],
+        temperature=0.0, # FIX 2: Set temperature to 0.0 for absolute strictness
+        system_instruction="You are the AI interface for AeroCanvas. Convert user requests into tool calls. The default test image is 'true_binary.ppm'. Never guess filter names; use only the explicit filter_mode options provided in the tool documentation."
+    )
+)
 
-            print("Gemini is analyzing matrix routing...")
-            response = chat.send_message(user_prompt)
-            print(f"\nAI: {response.text}\n")
+while True:
+    user_input = input("\n[You]: ")
+    if user_input.lower() in ['exit', 'quit']:
+        break
 
-        except Exception as e:
-            print(f"\n[CORE ERROR]: {str(e)}\n")
-
-if __name__ == "__main__":
-    boot_agent()
+    response = chat.send_message(user_input)
+    print(f"[AeroCanvas AI]: {response.text}")
