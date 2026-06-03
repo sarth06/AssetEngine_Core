@@ -19,7 +19,7 @@ By replacing the standard JVM with an OS-specific standalone executable, AeroCan
 ### 1. Cognitive Agent Execution Loop
 *The Gemini-driven agentic layer intercepting a natural language prompt, intelligently resolving the mathematical filter mode, executing live function calling, and streaming the processed assets.*
 
-![AI Agent Function Calling Demo](frontend/assets/agent_demo.gif)
+![AI Agent Function Calling Demo](frontend/assests/agent_demo.gif)
 
 ### 2. High-Performance Web UI Interactive Canvas
 *The UI layer executing lightning-fast asynchronous requests to the local gateway cluster, leveraging cache-busting timestamping to defeat aggressive browser storage behaviors.*
