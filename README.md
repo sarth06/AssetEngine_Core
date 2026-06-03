@@ -9,7 +9,7 @@ A high-performance, multi-language compute engine designed to optimize media tra
 ---
 
 ## 🎬 Live System Demonstration
-a
+
 ### 1. Cognitive Agent Execution Loop
 *The Gemini-driven agentic layer intercepting a natural language prompt, intelligently resolving the mathematical filter mode, executing live function calling, and streaming the processed assets.*
 
