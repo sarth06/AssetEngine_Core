@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroCanvas — Native Image Processing Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2128;
+            --border: #30363d;
+            --border-subtle: #21262d;
+            --primary: #238636;
+            --primary-hover: #2ea043;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #22d3ee;
+            --success: #2ea043;
+            --warning: #d29922;
+            --danger: #f85149;
+            --terminal-green: #7ee787;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --font-mono: 'Geist Mono', 'Fira Code', monospace;
+            --font-sans: 'Space Grotesk', 'Segoe UI', sans-serif;
+            --radius: 8px;
+            --radius-lg: 12px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 48px rgba(0,0,0,0.6);
+            --glow-primary: 0 0 20px rgba(35,134,54,0.25);
+            --glow-cyan: 0 0 20px rgba(34,211,238,0.2);
+            --glow-blue: 0 0 20px rgba(59,130,246,0.2);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { height: 100%; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(35,134,54,0.08) 0%, transparent 60%),
+                    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--surface); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ─── HEADER ─────────────────────────────────────────── */
+        #header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(13,17,23,0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 1px 0 rgba(48,54,61,0.5);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-cyan) 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: var(--glow-primary);
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+        }
+
+        .logo-text span {
+            color: var(--accent-cyan);
+        }
+
+        .header-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 4px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            flex-shrink: 0;
+            animation: pulse-dot 2.5s ease-in-out infinite;
+        }
+
+        .status-dot.idle { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: none; }
+        .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: none; }
+
+        @keyframes pulse-dot {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 1px solid;
+            white-space: nowrap;
+        }
+
+        .badge-engine { color: var(--accent-cyan); background: rgba(34,211,238,0.08); border-color: rgba(34,211,238,0.2); }
+        .badge-file { color: var(--accent-blue); background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
+        .badge-time { color: var(--terminal-green); background: rgba(126,231,135,0.08); border-color: rgba(126,231,135,0.2); }
+
+        .header-spacer { flex: 1; }
+
+        /* ─── MAIN WORKSPACE ──────────────────────────────────── */
+        #workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1024px) {
+            #workspace { grid-template-columns: 1fr; }
+        }
+
+        /* ─── PANEL ───────────────────────────────────────────── */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-label {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* ─── CARD ────────────────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(48,54,61,0.9);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(22,27,34,0.8);
+        }
+
+        .card-title {
+            font-size: 12px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: 0.3px;
+        }
+
+        .card-body { padding: 16px; }
+
+        /* ─── DROPZONE ────────────────────────────────────────── */
+        #dropzone {
+            position: relative;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 36px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        #dropzone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 60% 40% at 50% 50%, rgba(34,211,238,0.04) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        #dropzone:hover, #dropzone.dragover {
+            border-color: var(--accent-cyan);
+            background: rgba(34,211,238,0.04);
+            box-shadow: 0 0 0 4px rgba(34,211,238,0.08), var(--glow-cyan);
+        }
+
+        #dropzone:hover::before, #dropzone.dragover::before { opacity: 1; }
+
+        #dropzone.dragover {
+            animation: dropzone-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes dropzone-pulse {
+            0%,100% { box-shadow: 0 0 0 4px rgba(34,211,238,0.08), 0 0 20px rgba(34,211,238,0.15); }
+            50% { box-shadow: 0 0 0 8px rgba(34,211,238,0.05), 0 0 40px rgba(34,211,238,0.25); }
+        }
+
+        .dropzone-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.7;
+            display: block;
+        }
+
+        .dropzone-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .dropzone-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .dropzone-ext {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 3px 8px;
+            background: rgba(34,211,238,0.08);
+            border: 1px solid rgba(34,211,238,0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+        }
+
+        #fileInput { display: none; }
+
+        /* ─── METADATA CARD ───────────────────────────────────── */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .meta-item {
+            background: var(--surface2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+        }
+
+        .meta-label {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 13px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .meta-value.highlight { color: var(--accent-cyan); }
+        .meta-value.placeholder { color: var(--text-muted); font-weight: 400; }
+
+        /* ─── EXECUTE BUTTON ──────────────────────────────────── */
+        #execBtn {
+            width: 100%;
+            padding: 12px 20px;
+            background: var(--primary);
+            border: 1px solid rgba(35,134,54,0.5);
+            border-radius: var(--radius);
+            color: #fff;
+            font-size: 13px;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 2px 8px rgba(35,134,54,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #execBtn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        #execBtn:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: scale(1.02);
+            box-shadow: 0 4px 16px rgba(35,134,54,0.4);
+        }
+
+        #execBtn:active:not(:disabled) { transform: scale(0.99); }
+
+        #execBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── FILTER SELECTOR ────────────────────────────────── */
+        .filter-selector-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        .filter-selector-label {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-selector-label .filter-label-icon {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .filter-select-row {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface2);
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .filter-select-row:hover {
+            border-color: rgba(59,130,246,0.5);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+        }
+
+        .filter-select-row:focus-within {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+
+        .filter-icon-slot {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            flex-shrink: 0;
+            background: rgba(59,130,246,0.08);
+            border-right: 1px solid var(--border-subtle);
+            font-size: 14px;
+            color: var(--accent-blue);
+            transition: background 0.2s, color 0.2s;
+            user-select: none;
+        }
+
+        .filter-select-row:hover .filter-icon-slot,
+        .filter-select-row:focus-within .filter-icon-slot {
+            background: rgba(59,130,246,0.14);
+            color: #60a5fa;
+        }
+
+        #filterMode {
+            flex: 1;
+            padding: 10px 12px 10px 10px;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 12.5px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: calc(100% - 10px) center;
+            padding-right: 30px;
+        }
+
+        #filterMode:focus { outline: none; }
+
+        #filterMode option {
+            background: #1c2128;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 8px;
+        }
+
+        .filter-mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 1px solid rgba(59,130,246,0.3);
+            background: rgba(59,130,246,0.1);
+            color: #60a5fa;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+
+        .filter-mode-badge .fmb-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: fmb-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes fmb-pulse {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Per-filter badge accent colours */
+        .filter-badge-blur    { color: #60a5fa; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.08); }
+        .filter-badge-invert  { color: var(--accent-cyan); border-color: rgba(34,211,238,0.3); background: rgba(34,211,238,0.08); }
+        .filter-badge-gray    { color: var(--text-secondary); border-color: rgba(139,148,158,0.3); background: rgba(139,148,158,0.08); }
+        .filter-badge-sharpen { color: #f472b6; border-color: rgba(244,114,182,0.3); background: rgba(244,114,182,0.08); }
+        .filter-badge-edge    { color: var(--warning); border-color: rgba(210,153,34,0.3); background: rgba(210,153,34,0.08); }
+
+        /* ─── CANVAS CONTAINER ────────────────────────────────── */
+        .canvas-container {
+            position: relative;
+            background: #090c10;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-container canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .canvas-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-family: var(--font-mono);
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .canvas-placeholder .ph-icon { font-size: 28px; opacity: 0.4; }
+
+        /* ─── OUTPUT PROCESSING BORDER ────────────────────────── */
+        @property --border-angle {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 0deg;
+        }
+
+        .processing-border {
+            position: absolute;
+            inset: -1px;
+            border-radius: var(--radius);
+            background: conic-gradient(from var(--border-angle), transparent 0%, var(--accent-cyan) 15%, transparent 30%);
+            animation: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .processing-border.active {
+            opacity: 1;
+            animation: border-spin 1.5s linear infinite;
+        }
+
+        @keyframes border-spin {
+            to { --border-angle: 360deg; }
+        }
+
+        /* Fallback for browsers without @property */
+        @supports not (background: conic-gradient(from 0deg, transparent, red)) {
+            .processing-border.active {
+                background: linear-gradient(90deg, var(--accent-cyan), transparent, var(--accent-blue), transparent);
+                animation: border-slide 1.5s linear infinite;
+            }
+            @keyframes border-slide {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        }
+
+        /* ─── SKELETON ────────────────────────────────────────── */
+        .skeleton-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            border-radius: var(--radius);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .skeleton-overlay.active { display: flex; }
+
+        .skeleton-bar {
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--surface2) 25%, rgba(48,54,61,0.4) 50%, var(--surface2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* ─── BOTTOM SECTION ──────────────────────────────────── */
+        #bottom-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 0 24px 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;
+        }
+
+        @media (max-width: 900px) {
+            #bottom-section { grid-template-columns: 1fr; }
+        }
+
+        /* ─── TERMINAL ────────────────────────────────────────── */
+        #terminal {
+            background: #090c10;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .t-red { background: #f85149; }
+        .t-yellow { background: #d29922; }
+        .t-green { background: #2ea043; }
+
+        .terminal-title {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        #terminal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            line-height: 1.7;
+            min-height: 200px;
+            max-height: 280px;
+        }
+
+        .log-entry { display: flex; gap: 8px; }
+        .log-ts { color: var(--text-muted); flex-shrink: 0; }
+        .log-type { flex-shrink: 0; font-weight: 600; min-width: 60px; }
+        .log-msg { color: var(--text-secondary); word-break: break-all; }
+
+        .log-type.INFO { color: var(--accent-blue); }
+        .log-type.SUCCESS { color: var(--terminal-green); }
+        .log-type.WARNING { color: var(--warning); }
+        .log-type.ERROR { color: var(--danger); }
+        .log-type.NETWORK { color: var(--accent-cyan); }
+        .log-type.ENGINE { color: #a78bfa; }
+
+        /* ─── METRICS ─────────────────────────────────────────── */
+        #metrics-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .metrics-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .metrics-title {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1px;
+            background: var(--border-subtle);
+        }
+
+        .metric-cell {
+            background: var(--surface);
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-cell::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px; height: 100%;
+            background: var(--accent-cyan);
+            opacity: 0.3;
+        }
+
+        .metric-cell:nth-child(2)::before { background: var(--accent-blue); }
+        .metric-cell:nth-child(3)::before { background: var(--terminal-green); }
+        .metric-cell:nth-child(4)::before { background: var(--warning); }
+        .metric-cell:nth-child(5)::before { background: #a78bfa; }
+        .metric-cell:nth-child(6)::before { background: var(--primary); }
+        .metric-cell:nth-child(7)::before { background: #f472b6; }
+
+        .metric-name {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .metric-val {
+            font-size: 20px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.1;
+        }
+
+        .metric-unit {
+            font-size: 10px;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        /* ─── TOAST ───────────────────────────────────────────── */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            min-width: 280px;
+            max-width: 380px;
+            pointer-events: auto;
+            animation: toastIn 0.35s cubic-bezier(0.16,1,0.3,1) both;
+            backdrop-filter: blur(12px);
+        }
+
+        .toast.removing { animation: toastOut 0.3s ease-in both; }
+
+        .toast-icon { font-size: 16px; flex-shrink: 0; }
+        .toast-body { flex: 1; }
+        .toast-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .toast-msg { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); margin-top: 2px; }
+
+        .toast.success { border-color: rgba(46,160,67,0.4); }
+        .toast.error { border-color: rgba(248,81,73,0.4); }
+        .toast.warning { border-color: rgba(210,153,34,0.4); }
+        .toast.info { border-color: rgba(59,130,246,0.4); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(20px) translateY(10px); }
+            to { opacity: 1; transform: translateX(0) translateY(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(20px); }
+        }
+
+        /* ─── MISC ────────────────────────────────────────────── */
+        .section-header {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 24px 8px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        hr.divider {
+            border: none;
+            border-top: 1px solid var(--border-subtle);
+            margin: 4px 24px 16px;
+        }
+
+        .canvas-label {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(22,27,34,0.6);
+        }
+
+        /* Focus states */
+        *:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+
+        /* HIGH CONTRAST */
+        @media (forced-colors: active) {
+            .status-dot { forced-color-adjust: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="header" role="banner">
+    <a href="#" class="logo" aria-label="AeroCanvas">
+        <div class="logo-icon" aria-hidden="true">✦</div>
+        <span class="logo-text">Aero<span>Canvas</span></span>
+    </a>
+    <div class="header-divider"></div>
+    <div class="status-pill" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Engine Ready</span>
+    </div>
+    <span class="badge badge-engine" id="engineBadge" aria-label="Engine mode">AOT / C++</span>
+    <span class="badge badge-file" id="fileBadge">No file loaded</span>
+    <span class="badge badge-time" id="timeBadge">—</span>
+    <span class="filter-mode-badge filter-badge-blur" id="filterModeBadge" aria-label="Active filter mode">
+    <span class="fmb-dot"></span>
+    <span id="filterModeBadgeText">Mode: Blur</span>
+  </span>
+    <div class="header-spacer"></div>
+</header>
+
+<!-- WORKSPACE -->
+<main id="workspace" aria-label="Image processing workspace">
+
+    <!-- LEFT PANEL -->
+    <section class="panel" aria-label="Input panel">
+        <div class="panel-label">Input</div>
+
+        <!-- Dropzone -->
+        <div id="dropzone"
+             role="button"
+             tabindex="0"
+             aria-label="Upload PPM file — click or drag and drop"
+             aria-describedby="dropzone-desc">
+            <span class="dropzone-icon" aria-hidden="true">⬡</span>
+            <div class="dropzone-title">Drop your PPM file here</div>
+            <div class="dropzone-sub" id="dropzone-desc">or click to browse</div>
+            <span class="dropzone-ext">.ppm only</span>
+            <input type="file" id="fileInput" accept=".ppm" aria-label="File upload input">
+        </div>
+
+        <!-- Metadata -->
+        <div class="card" aria-label="Input file metadata">
+            <div class="card-header">
+                <span class="card-title">FILE METADATA</span>
+                <span class="badge badge-engine" id="fmtBadge" style="font-size:9px">—</span>
+            </div>
+            <div class="card-body">
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <div class="meta-label">Filename</div>
+                        <div class="meta-value placeholder" id="mFilename">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Dimensions</div>
+                        <div class="meta-value highlight" id="mDims">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Format</div>
+                        <div class="meta-value" id="mFormat">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">File Size</div>
+                        <div class="meta-value" id="mSize">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Selector -->
+        <div class="filter-selector-wrap" aria-label="Processing filter selection">
+            <div class="filter-selector-label">
+                <span class="filter-label-icon" aria-hidden="true">◈</span>
+                Processing Mode
+            </div>
+            <div class="filter-select-row">
+                <div class="filter-icon-slot" id="filterIconSlot" aria-hidden="true">⬡</div>
+                <select id="filterMode" aria-label="Select image processing filter">
+                    <option value="blur">3×3 Box Blur</option>
+                    <option value="invert">Color Inversion</option>
+                    <option value="grayscale">Grayscale</option>
+                    <option value="sharpen">Sharpen</option>
+                    <option value="edge">Edge Detection</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Execute -->
+        <button id="execBtn" disabled aria-label="Execute native image processing engine">
+            <span class="btn-spinner" id="btnSpinner" aria-hidden="true"></span>
+            <span id="btnIcon" aria-hidden="true">⚡</span>
+            <span id="btnLabel">Execute Native Engine</span>
+        </button>
+
+        <!-- Input Canvas -->
+        <div class="card" aria-label="Input image preview">
+            <div class="canvas-label">Input Canvas — Preview</div>
+            <div class="card-body" style="padding:12px;">
+                <div class="canvas-container" id="inputCanvasWrap">
+                    <canvas id="inputCanvas" aria-label="Input image canvas"></canvas>
+                    <div class="canvas-placeholder" id="inputPlaceholder" aria-hidden="true">
+                        <span class="ph-icon">◫</span>
+                        <span>Awaiting file input</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <section class="panel" aria-label="Output panel">
+        <div class="panel-label">Output</div>
+
+        <!-- Output Canvas -->
+        <div class="card" aria-label="Processed output image">
+            <div class="canvas-label">Output Canvas — Processed</div>
+            <div class="card-body" style="padding:12px;">
+                <div class="canvas-container" id="outputCanvasWrap" style="position:relative;">
+                    <div class="processing-border" id="processingBorder" aria-hidden="true"></div>
+                    <canvas id="outputCanvas" aria-label="Output image canvas" style="position:relative;z-index:1;"></canvas>
+                    <div class="skeleton-overlay" id="skeletonOverlay" aria-live="polite" aria-label="Processing…">
+                        <div class="skeleton-bar" style="width:60%;height:16px;"></div>
+                        <div class="skeleton-bar" style="width:80%;height:120px;"></div>
+                        <div class="skeleton-bar" style="width:50%;height:12px;"></div>
+                    </div>
+                    <div class="canvas-placeholder" id="outputPlaceholder" aria-hidden="true">
+                        <span class="ph-icon">◫</span>
+                        <span>Awaiting engine output</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Metadata -->
+        <div class="card" aria-label="Output file metadata">
+            <div class="card-header">
+                <span class="card-title">OUTPUT METADATA</span>
+            </div>
+            <div class="card-body">
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <div class="meta-label">Format</div>
+                        <div class="meta-value placeholder" id="outFormat">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Dimensions</div>
+                        <div class="meta-value highlight" id="outDims">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Render Time</div>
+                        <div class="meta-value" id="outRender">—</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">RTT</div>
+                        <div class="meta-value" id="outRTT">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- BOTTOM SECTION -->
+<section aria-label="Telemetry and metrics" style="margin-top:0;">
+    <div id="bottom-section">
+
+        <!-- Terminal -->
+        <div id="terminal" role="log" aria-label="Telemetry terminal" aria-live="polite">
+            <div class="terminal-header">
+                <span class="terminal-dot t-red"></span>
+                <span class="terminal-dot t-yellow"></span>
+                <span class="terminal-dot t-green"></span>
+                <span class="terminal-title">aerocanvas — telemetry output</span>
+            </div>
+            <div id="terminal-body"></div>
+        </div>
+
+        <!-- Metrics -->
+        <div id="metrics-panel" aria-label="Performance metrics">
+            <div class="metrics-header">
+                <span class="metrics-title">Performance Metrics</span>
+                <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);">LIVE</span>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-cell">
+                    <div class="metric-name">Exec Time</div>
+                    <div class="metric-val" id="metExec">—<span class="metric-unit"></span></div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-name">Round Trip</div>
+                    <div class="metric-val" id="metRTT">—<span class="metric-unit"></span></div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-name">Resolution</div>
+                    <div class="metric-val" id="metRes" style="font-size:13px;">—</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-name">File Size</div>
+                    <div class="metric-val" id="metFile">—<span class="metric-unit"></span></div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-name">Render Time</div>
+                    <div class="metric-val" id="metRender">—<span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-name">FPS Est.</div>
+                    <div class="metric-val" id="metFPS">—<span class="metric-unit"></span></div>
+                </div>
+                <div class="metric-cell" style="grid-column: 1 / -1; border-top: 1px solid var(--border-subtle);">
+                    <div class="metric-name">Current Filter</div>
+                    <div class="metric-val" id="metFilter" style="font-size:14px;color:var(--accent-blue);">3×3 Box Blur<span class="metric-unit" style="margin-left:8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;">blur</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<script>
+    'use strict';
+
+    // ─── STATE ────────────────────────────────────────────────────────────────────
+    const state = {
+        file: null,
+        buffer: null,
+        inputMeta: null,
+        processing: false,
+    };
+
+    // ─── DOM REFS ─────────────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const dropzone       = $('dropzone');
+    const fileInput      = $('fileInput');
+    const execBtn        = $('execBtn');
+    const btnSpinner     = $('btnSpinner');
+    const btnIcon        = $('btnIcon');
+    const btnLabel       = $('btnLabel');
+    const inputCanvas    = $('inputCanvas');
+    const outputCanvas   = $('outputCanvas');
+    const inputPlaceholder  = $('inputPlaceholder');
+    const outputPlaceholder = $('outputPlaceholder');
+    const skeletonOverlay   = $('skeletonOverlay');
+    const processingBorder  = $('processingBorder');
+    const terminalBody   = $('terminal-body');
+    const filterMode     = $('filterMode');
+
+    // ─── FILTER REGISTRY ──────────────────────────────────────────────────────────
+    // Adding a new filter: add one entry here + a <option> in HTML + backend impl.
+    // No other frontend changes required.
+    const FILTER_MODES = {
+        blur:      { label: '3×3 Box Blur',    icon: '⬡', badgeClass: 'filter-badge-blur',    headerLabel: 'Mode: Blur'    },
+        invert:    { label: 'Color Inversion', icon: '◑', badgeClass: 'filter-badge-invert',  headerLabel: 'Mode: Invert'  },
+        grayscale: { label: 'Grayscale',       icon: '◐', badgeClass: 'filter-badge-gray',    headerLabel: 'Mode: Gray'    },
+        sharpen:   { label: 'Sharpen',         icon: '◈', badgeClass: 'filter-badge-sharpen', headerLabel: 'Mode: Sharpen' },
+        edge:      { label: 'Edge Detection',  icon: '◇', badgeClass: 'filter-badge-edge',    headerLabel: 'Mode: Edge'    },
+    };
+
+    // Sync all filter-related UI elements to the currently selected mode
+    function syncFilterUI(value) {
+        const def = FILTER_MODES[value] || FILTER_MODES['blur'];
+
+        // Icon slot
+        $('filterIconSlot').textContent = def.icon;
+
+        // Header badge
+        const hBadge = $('filterModeBadge');
+        hBadge.className = `filter-mode-badge ${def.badgeClass}`;
+        // preserve inner dot span
+        $('filterModeBadgeText').textContent = def.headerLabel;
+
+        // Metrics panel
+        $('metFilter').innerHTML = `${def.label}<span class="metric-unit" style="margin-left:8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;">${value}</span>`;
+    }
+
+    // Wire up dropdown
+    filterMode.addEventListener('change', () => {
+        const val = filterMode.value;
+        syncFilterUI(val);
+        log(`Filter mode changed → ${FILTER_MODES[val]?.label || val}`, 'INFO');
+    });
+
+    // ─── LOGGER ───────────────────────────────────────────────────────────────────
+    function log(message, type = 'INFO') {
+        const now = new Date();
+        const ts  = now.toTimeString().slice(0,8);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-ts">[${ts}]</span><span class="log-type ${type}">[${type}]</span><span class="log-msg">${escHtml(message)}</span>`;
+        terminalBody.appendChild(entry);
+        terminalBody.scrollTop = terminalBody.scrollHeight;
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ─── TOAST ────────────────────────────────────────────────────────────────────
+    const TOAST_ICONS = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+    const TOAST_TITLES = { success:'Success', error:'Error', warning:'Warning', info:'Info' };
+
+    function toast(msg, type = 'info', sub = '') {
+        const container = $('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.setAttribute('role','alert');
+        el.innerHTML = `
+    <span class="toast-icon" aria-hidden="true">${TOAST_ICONS[type]||'ℹ'}</span>
+    <div class="toast-body">
+      <div class="toast-title">${TOAST_TITLES[type]||type}</div>
+      ${sub ? `<div class="toast-msg">${escHtml(sub)}</div>` : `<div class="toast-msg">${escHtml(msg)}</div>`}
+    </div>`;
+        if(sub) el.querySelector('.toast-title').textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => {
+            el.classList.add('removing');
+            el.addEventListener('animationend', () => el.remove(), { once: true });
+        }, 4000);
+    }
+
+    // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
+    function setStatus(label, state_) {
+        $('statusText').textContent = label;
+        const dot = $('statusDot');
+        dot.className = 'status-dot' + (state_ ? ` ${state_}` : '');
+    }
+
+    // ─── HUMANIZE SIZE ────────────────────────────────────────────────────────────
+    function fmtSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1048576) return `${(bytes/1024).toFixed(1)} KB`;
+        return `${(bytes/1048576).toFixed(2)} MB`;
+    }
+
+    // ─── PPM PARSER ───────────────────────────────────────────────────────────────
+    /**
+     * parsePPM(buffer: ArrayBuffer) → { format, width, height, pixels: Uint8Array, headerEnd: number }
+     * Handles P3 (ASCII) and P6 (Binary), arbitrary whitespace, comment lines.
+     */
+    function parsePPM(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let pos = 0;
+
+        // Skip whitespace
+        function skipWS() {
+            while (pos < bytes.length) {
+                const c = bytes[pos];
+                if (c === 0x23) { // '#' — skip comment line
+                    while (pos < bytes.length && bytes[pos] !== 0x0A && bytes[pos] !== 0x0D) pos++;
+                } else if (c === 0x20 || c === 0x09 || c === 0x0A || c === 0x0D) {
+                    pos++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Read next token (ASCII sequence of non-whitespace)
+        function readToken() {
+            skipWS();
+            let start = pos;
+            while (pos < bytes.length) {
+                const c = bytes[pos];
+                if (c === 0x20 || c === 0x09 || c === 0x0A || c === 0x0D || c === 0x23) break;
+                pos++;
+            }
+            if (pos === start) throw new Error('Unexpected end of PPM header');
+            return String.fromCharCode(...bytes.slice(start, pos));
+        }
+
+        // Magic
+        const magic = readToken();
+        if (magic !== 'P3' && magic !== 'P6') {
+            throw new Error(`Unsupported PPM format: "${magic}". Expected P3 or P6.`);
+        }
+
+        // Dimensions
+        const widthStr  = readToken();
+        const heightStr = readToken();
+        const maxValStr = readToken();
+
+        const width  = parseInt(widthStr, 10);
+        const height = parseInt(heightStr, 10);
+        const maxVal = parseInt(maxValStr, 10);
+
+        if (!Number.isFinite(width)  || width  <= 0) throw new Error(`Invalid width: ${widthStr}`);
+        if (!Number.isFinite(height) || height <= 0) throw new Error(`Invalid height: ${heightStr}`);
+        if (!Number.isFinite(maxVal) || maxVal <= 0) throw new Error(`Invalid max value: ${maxValStr}`);
+
+        const pixelCount = width * height;
+
+        // After last header token, skip exactly ONE whitespace char (P6 spec)
+        // pos is already past maxVal; for P6 skip one mandatory whitespace byte
+        if (magic === 'P6') {
+            // Skip exactly one whitespace separator after max value
+            if (pos < bytes.length && (bytes[pos] === 0x0A || bytes[pos] === 0x0D || bytes[pos] === 0x20 || bytes[pos] === 0x09)) {
+                // handle \r\n
+                if (bytes[pos] === 0x0D && pos+1 < bytes.length && bytes[pos+1] === 0x0A) pos += 2;
+                else pos++;
+            }
+        }
+
+        const headerEnd = pos;
+
+        // Decode pixels
+        const rgba = new Uint8Array(pixelCount * 4);
+
+        if (magic === 'P3') {
+            // ASCII — read numeric tokens
+            let pixIdx = 0;
+            for (let i = 0; i < pixelCount; i++) {
+                const r = parseInt(readToken(), 10);
+                const g = parseInt(readToken(), 10);
+                const b = parseInt(readToken(), 10);
+                if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+                    throw new Error(`Missing RGB data at pixel ${i} of ${pixelCount}`);
+                }
+                const scale = maxVal !== 255 ? 255 / maxVal : 1;
+                rgba[pixIdx++] = Math.round(r * scale);
+                rgba[pixIdx++] = Math.round(g * scale);
+                rgba[pixIdx++] = Math.round(b * scale);
+                rgba[pixIdx++] = 255;
+            }
+        } else {
+            // P6 Binary — raw RGB stream
+            const needed = pixelCount * 3;
+            const available = bytes.length - headerEnd;
+            if (available < needed) {
+                throw new Error(`Truncated P6 data: need ${needed} bytes, got ${available}`);
+            }
+            const src = bytes.subarray(headerEnd, headerEnd + needed);
+            const scale = maxVal !== 255 ? 255 / maxVal : 1;
+            let si = 0, di = 0;
+            if (maxVal === 255) {
+                // Fast path — no scaling needed
+                for (let i = 0; i < pixelCount; i++) {
+                    rgba[di++] = src[si++];
+                    rgba[di++] = src[si++];
+                    rgba[di++] = src[si++];
+                    rgba[di++] = 255;
+                }
+            } else {
+                for (let i = 0; i < pixelCount; i++) {
+                    rgba[di++] = Math.round(src[si++] * scale);
+                    rgba[di++] = Math.round(src[si++] * scale);
+                    rgba[di++] = Math.round(src[si++] * scale);
+                    rgba[di++] = 255;
+                }
+            }
+        }
+
+        return { format: magic, width, height, pixels: rgba };
+    }
+
+    // ─── RENDERER ─────────────────────────────────────────────────────────────────
+    /**
+     * renderPPM(buffer, canvas) → { format, width, height, renderTime }
+     */
+    function renderPPM(buffer, canvas) {
+        const t0 = performance.now();
+        const parsed = parsePPM(buffer);
+        const { format, width, height, pixels } = parsed;
+
+        canvas.width  = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(width, height);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+
+        const t1 = performance.now();
+        const renderTime = +(t1 - t0).toFixed(2);
+
+        return { format, width, height, renderTime };
+    }
+
+    // ─── DRAG & DROP ──────────────────────────────────────────────────────────────
+    dropzone.addEventListener('dragenter', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragover',  e => { e.preventDefault(); });
+    dropzone.addEventListener('dragleave', e => { if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const files = e.dataTransfer?.files;
+        if (files?.length) handleFile(files[0]);
+    });
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+    fileInput.addEventListener('change', () => { if (fileInput.files?.length) handleFile(fileInput.files[0]); });
+
+    // ─── HANDLE FILE ──────────────────────────────────────────────────────────────
+    function handleFile(file) {
+        // Validate extension
+        if (!file.name.toLowerCase().endsWith('.ppm')) {
+            log(`Rejected file "${file.name}" — only .ppm files are supported`, 'ERROR');
+            toast('Invalid File Type', 'error', `"${file.name}" is not a .ppm file`);
+            return;
+        }
+
+        state.file = file;
+        log(`Loading file: ${file.name} (${fmtSize(file.size)})`, 'INFO');
+
+        // Update file badge
+        $('fileBadge').textContent = file.name.length > 20 ? file.name.slice(0,18)+'…' : file.name;
+
+        // Update metadata
+        $('mFilename').textContent = file.name;
+        $('mFilename').classList.remove('placeholder');
+        $('mSize').textContent = fmtSize(file.size);
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            state.buffer = e.target.result;
+            try {
+                const meta = renderPPM(state.buffer, inputCanvas);
+                state.inputMeta = meta;
+                inputPlaceholder.style.display = 'none';
+
+                // Metadata
+                $('mDims').textContent = `${meta.width} × ${meta.height}`;
+                $('mFormat').textContent = meta.format;
+                $('fmtBadge').textContent = meta.format;
+                $('metRes').textContent = `${meta.width}×${meta.height}`;
+                $('metFile').innerHTML = `${fmtSize(file.size)}<span class="metric-unit"></span>`;
+                $('metRender').innerHTML = `${meta.renderTime}<span class="metric-unit">ms</span>`;
+
+                const fps = meta.renderTime > 0 ? Math.round(1000 / meta.renderTime) : 999;
+                $('metFPS').innerHTML = `${Math.min(fps,999)}<span class="metric-unit">fps</span>`;
+
+                execBtn.disabled = false;
+                log(`Parsed ${meta.format}: ${meta.width}×${meta.height} in ${meta.renderTime}ms`, 'SUCCESS');
+                toast('File Loaded', 'success', `${meta.format} ${meta.width}×${meta.height}`);
+            } catch (err) {
+                log(`Parse error: ${err.message}`, 'ERROR');
+                toast('Parse Error', 'error', err.message);
+            }
+        };
+        reader.onerror = () => {
+            log(`Failed to read file: ${file.name}`, 'ERROR');
+            toast('Read Failed', 'error', 'Could not read the selected file');
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // ─── EXECUTE ──────────────────────────────────────────────────────────────────
+    execBtn.addEventListener('click', async () => {
+        if (!state.file || !state.buffer || state.processing) return;
+        state.processing = true;
+
+        // Read selected filter
+        const selectedMode = filterMode.value;
+        const filterDef = FILTER_MODES[selectedMode] || FILTER_MODES['blur'];
+
+        // UI: disable button, show spinner
+        execBtn.disabled  = true;
+        btnSpinner.style.display = 'block';
+        btnIcon.style.display    = 'none';
+        btnLabel.textContent     = `Running ${filterDef.label}…`;
+
+        // Show skeleton + processing border
+        skeletonOverlay.classList.add('active');
+        processingBorder.classList.add('active');
+        outputPlaceholder.style.display = 'none';
+        setStatus(`Processing — ${filterDef.label}`, 'idle');
+
+        log(`Selected Filter: ${selectedMode}`, 'INFO');
+        log(`[TX] Routing payload to FastAPI Bridge @ http://127.0.0.1:8000/process-image/`, 'NETWORK');
+        log(`Executing native filter pipeline: ${filterDef.label}`, 'ENGINE');
+
+        const rttStart = performance.now();
+
+        try {
+            // Upload with mode
+            const formData = new FormData();
+            formData.append('file', state.file);
+            formData.append('mode', selectedMode);
+
+            log(`Uploading ${fmtSize(state.file.size)} payload with mode="${selectedMode}"…`, 'ENGINE');
+
+            const response = await fetch('http://127.0.0.1:8000/process-image/', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                let errText = `HTTP ${response.status}`;
+                try { const j = await response.json(); errText = j.detail || j.message || errText; } catch {}
+                throw new Error(`API error: ${errText}`);
+            }
+
+            let json;
+            try {
+                json = await response.json();
+            } catch {
+                throw new Error('Invalid JSON response from API');
+            }
+
+            if (!json || json.status !== 'success' || !json.output) {
+                throw new Error(`Unexpected API response: ${JSON.stringify(json)}`);
+            }
+
+            log(`[RX] Response received — output URL: ${json.output}`, 'NETWORK');
+
+            // Fetch output PPM
+            // CACHE BUSTER: Append a unique timestamp query parameter to bypass browser caching
+            const timestampedUrl = `${json.output}?t=${new Date().getTime()}`;
+
+            log(`Fetching output file: ${timestampedUrl}`, 'NETWORK');
+            const outResponse = await fetch(timestampedUrl);
+            if (!outResponse.ok) throw new Error(`Output fetch failed: HTTP ${outResponse.status}`);
+
+            const outBuffer = await outResponse.arrayBuffer();
+            const rttEnd = performance.now();
+            const rtt = +(rttEnd - rttStart).toFixed(1);
+
+            log(`Output received: ${fmtSize(outBuffer.byteLength)}`, 'ENGINE');
+
+            // Render output
+            const outMeta = renderPPM(outBuffer, outputCanvas);
+
+            // Hide skeleton
+            skeletonOverlay.classList.remove('active');
+            processingBorder.classList.remove('active');
+
+            // Update metrics
+            const execTime = +(rttEnd - rttStart - outMeta.renderTime).toFixed(1);
+            $('metExec').innerHTML   = `${execTime}<span class="metric-unit">ms</span>`;
+            $('metRTT').innerHTML    = `${rtt}<span class="metric-unit">ms</span>`;
+            $('metRender').innerHTML = `${outMeta.renderTime}<span class="metric-unit">ms</span>`;
+            const fps2 = outMeta.renderTime > 0 ? Math.round(1000 / outMeta.renderTime) : 999;
+            $('metFPS').innerHTML    = `${Math.min(fps2,999)}<span class="metric-unit">fps</span>`;
+            $('metRes').textContent  = `${outMeta.width}×${outMeta.height}`;
+            syncFilterUI(selectedMode); // ensure metric filter cell is current
+
+            // Update output meta card
+            $('outFormat').textContent = outMeta.format;
+            $('outFormat').classList.remove('placeholder');
+            $('outDims').textContent   = `${outMeta.width} × ${outMeta.height}`;
+            $('outRender').textContent = `${outMeta.renderTime} ms`;
+            $('outRTT').textContent    = `${rtt} ms`;
+            $('timeBadge').textContent = `${rtt}ms RTT`;
+
+            setStatus('Engine Ready', '');
+            log(`Filter ${selectedMode} completed successfully — ${outMeta.width}×${outMeta.height} ${outMeta.format} in ${outMeta.renderTime}ms`, 'SUCCESS');
+            toast(`Processing completed using ${filterDef.label} filter`, 'success', `RTT: ${rtt}ms | Render: ${outMeta.renderTime}ms`);
+
+        } catch (err) {
+            skeletonOverlay.classList.remove('active');
+            processingBorder.classList.remove('active');
+            outputPlaceholder.style.display = '';
+            setStatus('Engine Error', 'error');
+            log(`${filterDef.label} filter execution failed: ${err.message}`, 'ERROR');
+            toast(`${filterDef.label} filter execution failed`, 'error', err.message);
+        } finally {
+            state.processing  = false;
+            execBtn.disabled  = !state.file;
+            btnSpinner.style.display = 'none';
+            btnIcon.style.display    = '';
+            btnLabel.textContent     = 'Execute Native Engine';
+        }
+    });
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────────
+    (function init() {
+        log('AeroCanvas initialized — v1.1.0 (AOT/C++)', 'INFO');
+        log('Engine: P3/P6 PPM parser loaded', 'ENGINE');
+        log('Renderer: HTML5 Canvas putImageData() active', 'ENGINE');
+        log(`Filter Pipeline: ${Object.keys(FILTER_MODES).length} modes registered`, 'ENGINE');
+        log('API Bridge: http://127.0.0.1:8000/process-image/', 'NETWORK');
+        log('Awaiting file input…', 'INFO');
+        // Hydrate filter UI from default dropdown value
+        syncFilterUI(filterMode.value);
+    })();
+</script>
+</body>
+</html>
