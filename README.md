@@ -116,25 +116,39 @@ FastAPI seamlessly manages multi-megabyte payload transfers between the concurre
 ## 📂 Repository Structure
 
 ```text
-AeroCanvas/
+AssetEngine_Core/
 │
-├── frontend/
-│   ├── index.html        # Terminal-styled UI
-│   ├── script.js         # Async API communication
-│   ├── styles.css
-│   └── assets/           # Generated telemetry & gifs
+├── ai_orchestrator/
+│   └── ai_agent.py              # Gemini function-calling orchestration layer
 │
 ├── api_gateway/
-│   └── server.py         # FastAPI routing & IPC subprocess management
+│   └── server.py                # FastAPI gateway & IPC subprocess management
 │
 ├── core_engine/
-│   ├── Main.java         # AOT Target / Entrypoint
-│   └── Image.java        # Byte-level matrix convolution logic
+│   ├── build/
+│   └── src/
+│       ├── Main.java            # Native executable entrypoint
+│       ├── Image.java           # PPM image representation & processing
+│       └── Filter.java          # Matrix convolution & filter algorithms
 │
-├── workspace_data/       # Shared I/O volatile storage plane
+├── frontend/
+│   ├── index.html              # Interactive QA dashboard
+│   └── assets/
+│       ├── agent_demo.gif      # AI orchestration demonstration
+│       └── canvas_demo.gif     # Frontend execution demo
 │
-└── README.md
-
+├── workspace_data/
+│   ├── generate_asset.py       # Asset generation utilities
+│   ├── input.ppm               # Input image workspace
+│   ├── true_binary.ppm         # Intermediate processing asset
+│   └── high_res_output.ppm     # Generated output asset
+│
+├── AeroCanvas.exe              # GraalVM native compiled engine
+├── .env                        # Environment configuration
+├── .gitignore
+├── build.bat                   # Native build automation
+├── README.md
+└── AssetEngine_Core.iml
 ```
 
 ---
